@@ -15,7 +15,7 @@ python -m http.server 4173 --directory dist
 
 ## 写文章
 
-打开[作者工作台](https://tecrel.github.io/author.html)，填写文章资料并编辑 Markdown。工作台提供实时预览、当前浏览器草稿、导入、复制和下载。发布时复制 Markdown，前往 GitHub 创建文件，粘贴并提交到 `main`。若要修改旧文，可以直接在 GitHub 编辑，也可以导入该文章的 `.md` 文件修改，再将内容复制回同名文件。
+将 Markdown 文章提交到本仓库的 `main` 分支后，GitHub Actions 会更新公开博客。
 
 也可以在 `posts` 手动新建 `YYYY-MM-DD-slug.md`，逐行填写 `title: ...`、`date: ...`、`category: ...` 和 `description: ...`，接着独占一行 `---`，下面写正文。支持段落、标题、无序列表、粗体、行内代码、围栏代码块和 HTTP(S) 链接。第一篇文章提交后，首页会自动出现精选和文章索引。
 

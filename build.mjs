@@ -1,14 +1,18 @@
-import { cpSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { escape, markdown, readPost } from './assets/markdown.js';
-import { authorPage } from './author-page.mjs';
 
 process.chdir(fileURLToPath(new URL('.', import.meta.url)));
 mkdirSync('dist', { recursive: true });
 for (const file of readdirSync('dist', { withFileTypes: true })) {
   if (file.isFile() && file.name.endsWith('.html')) unlinkSync('dist/' + file.name);
 }
-cpSync('assets', 'dist/assets', { recursive: true });
+mkdirSync('dist/assets', { recursive: true });
+const readerAssets = new Set(['archive.js', 'cover.webp', 'style.css']);
+for (const file of readdirSync('dist/assets', { withFileTypes: true })) {
+  if (file.isFile() && !readerAssets.has(file.name)) unlinkSync('dist/assets/' + file.name);
+}
+for (const file of readerAssets) copyFileSync('assets/' + file, 'dist/assets/' + file);
 
 const github = 'https://github.com/Tecrel';
 const project = github + '/Personal_Agent_Lynn';
@@ -49,7 +53,6 @@ function page(title, content, active, description = 'Tecrel 的技术、研究�
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="${escape(description)}">
-  ${active === 'author' ? '<meta name="robots" content="noindex, nofollow"><link rel="stylesheet" href="./assets/author.css">' : ''}
   <title>${escape(title)} · Tecrel</title>
   <link rel="stylesheet" href="./assets/style.css">
   <link rel="alternate" type="application/rss+xml" title="Tecrel 的博客" href="./feed.xml">
@@ -145,8 +148,6 @@ writeFileSync('dist/about.html', page('关于', `
       <p><a href="${github}">GitHub ${arrow}</a> · <a href="./feed.xml">RSS</a></p>
     </div>
   </section>`, 'about'));
-
-writeFileSync('dist/author.html', page('作者工作台', authorPage, 'author', 'Tecrel 博客的写作工作台。'));
 
 const items = posts.map(post => `<item>
   <title>${escape(post.title)}</title>
