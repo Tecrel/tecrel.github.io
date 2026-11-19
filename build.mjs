@@ -9,7 +9,8 @@ for (const file of readdirSync('dist', { withFileTypes: true })) {
   if (file.isFile() && file.name.endsWith('.html')) unlinkSync('dist/' + file.name);
 }
 mkdirSync('dist/assets', { recursive: true });
-const readerAssets = new Set(['archive.js', 'cover.webp', 'style.css', 'posts-index.json']);
+const staticAssets = ['archive.js', 'cover.webp', 'style.css', 'koi.js'];
+const readerAssets = new Set([...staticAssets, 'posts-index.json']);
 const auth = process.env.BLOG_AUTH_SITE_CONFIG ? JSON.parse(process.env.BLOG_AUTH_SITE_CONFIG) : null;
 const authFiles = ['auth.js', 'auth.css', 'firebase-service.mjs', 'publish-input.mjs'];
 if (auth) {
@@ -25,7 +26,7 @@ if (auth) {
 for (const file of readdirSync('dist/assets', { withFileTypes: true })) {
   if (file.isFile() && !readerAssets.has(file.name)) unlinkSync('dist/assets/' + file.name);
 }
-for (const file of ['archive.js', 'cover.webp', 'style.css']) copyFileSync('assets/' + file, 'dist/assets/' + file);
+for (const file of staticAssets) copyFileSync('assets/' + file, 'dist/assets/' + file);
 if (auth) {
   for (const file of authFiles) copyFileSync('auth/' + file, 'dist/assets/' + file);
   const publicConfig = Object.fromEntries(['apiKey', 'authDomain', 'projectId', 'appId'].map(key => [key, auth.firebase[key]]));
@@ -90,12 +91,14 @@ function page(title, content, active, description = 'Tecrel 的技术、研究�
   <link rel="alternate" type="application/rss+xml" title="Tecrel 的博客" href="./feed.xml">
 </head>
 <body>
+  <canvas class="koi-background" aria-hidden="true"></canvas>
   <div class="shell">
     ${header(active)}
     <main id="main">${content}</main>
     ${auth ? authDialog : ''}
     ${footer}
   </div>
+  <script src="./assets/koi.js" defer></script>
 </body>
 </html>`;
 }
