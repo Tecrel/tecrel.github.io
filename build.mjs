@@ -1,27 +1,24 @@
-import { cpSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { escape, markdown, readPost } from './assets/markdown.js';
+import { authorPage } from './author-page.mjs';
 
 process.chdir(fileURLToPath(new URL('.', import.meta.url)));
 mkdirSync('dist', { recursive: true });
+for (const file of readdirSync('dist', { withFileTypes: true })) {
+  if (file.isFile() && file.name.endsWith('.html')) unlinkSync('dist/' + file.name);
+}
 cpSync('assets', 'dist/assets', { recursive: true });
 
-const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;')
-  .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const github = 'https://github.com/Tecrel';
 const project = github + '/Personal_Agent_Lynn';
 const base = 'https://tecrel.github.io';
 
 const posts = readdirSync('posts').filter(file => file.endsWith('.md')).map(file => {
-  const [header, ...parts] = readFileSync('posts/' + file, 'utf8').split(/\r?\n---\r?\n/);
-  const metadata = Object.fromEntries(header.split(/\r?\n/).filter(Boolean).map(line => {
-    const colon = line.indexOf(':');
-    if (colon < 1) throw new Error('Invalid metadata in ' + file);
-    return [line.slice(0, colon), line.slice(colon + 1).trim()];
-  }));
-  for (const key of ['title', 'date', 'category', 'description']) {
-    if (!metadata[key]) throw new Error('Missing ' + key + ' in ' + file);
+  if (!/^\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/.test(file)) {
+    throw new Error('Expected YYYY-MM-DD-slug.md: ' + file);
   }
-  return { ...metadata, slug: file.slice(0, -3), body: parts.join('\n---\n') };
+  return { ...readPost(readFileSync('posts/' + file, 'utf8')), slug: file.slice(0, -3) };
 }).sort((a, b) => b.date.localeCompare(a.date));
 
 const date = post => `<time datetime="${escape(post.date)}">${escape(post.date.replaceAll('-', '.'))}</time>`;
@@ -33,7 +30,7 @@ const header = active => `
   <header class="topbar">
     <a class="site-name" href="./index.html"><span class="mark" aria-hidden="true">T</span> Tecrel 的博客</a>
     <nav aria-label="主导航">
-      <a href="./index.html#notes" ${active === 'notes' ? 'aria-current="page"' : ''}>文章</a>
+      <a href="./index.html${posts.length ? '#notes' : ''}" ${active === 'notes' ? 'aria-current="page"' : ''}>${posts.length ? '文章' : '首页'}</a>
       <a href="./about.html" ${active === 'about' ? 'aria-current="page"' : ''}>关于</a>
       <a href="${github}">GitHub ${arrow}</a>
     </nav>
@@ -52,6 +49,7 @@ function page(title, content, active, description = 'Tecrel 的技术、研究�
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="${escape(description)}">
+  ${active === 'author' ? '<meta name="robots" content="noindex, nofollow"><link rel="stylesheet" href="./assets/author.css">' : ''}
   <title>${escape(title)} · Tecrel</title>
   <link rel="stylesheet" href="./assets/style.css">
   <link rel="alternate" type="application/rss+xml" title="Tecrel 的博客" href="./feed.xml">
@@ -66,7 +64,7 @@ function page(title, content, active, description = 'Tecrel 的技术、研究�
 </html>`;
 }
 
-const featured = posts.find(post => post.slug === '2026-11-18-reaction') ?? posts[0];
+const featured = posts[0];
 const categories = [...new Set(posts.map(post => post.category))];
 const rows = posts.map(post => `
   <article class="post" data-category="${escape(post.category)}" data-search="${escape([post.title, post.description, post.category].join(' '))}">
@@ -93,11 +91,14 @@ writeFileSync('dist/index.html', page('个人博客', `
       </div>
       <a class="read-link" href="${postUrl(featured)}">阅读全文 ${arrow}</a>
     </div>
-  </section>` : ''}
-  <section class="journal" id="notes" aria-labelledby="journal-title">
+  </section>` : `<section class="feature" aria-label="博客封面">
+    <div class="feature-cover">${cover}</div>
+    <div class="feature-copy empty-feature"><h2>文章筹备中。</h2></div>
+  </section>`}
+  ${posts.length ? `<section class="journal" id="notes" aria-labelledby="journal-title">
     <div class="section-head">
       <h2 id="journal-title">文章索引</h2>
-      <span>建站示例 · ${posts.length} 篇</span>
+      <span>${posts.length} 篇</span>
     </div>
     <div class="archive-tools" hidden>
       <div class="filters" role="group" aria-label="按分类筛选">
@@ -109,25 +110,18 @@ writeFileSync('dist/index.html', page('个人博客', `
     <div>${rows}</div>
     <p id="empty" hidden>没有找到符合条件的文章。</p>
     <p class="sr-only" id="count" aria-live="polite"></p>
-  </section>
+  </section><script src="./assets/archive.js" defer></script>` : ''}
   <aside class="project">
     <div><h2>正在做 · LYNNING</h2><p>关于记忆、主动性与交互形式的个人 Agent 项目。</p></div>
     <a href="${project}">项目仓库 ${arrow}</a>
-  </aside>
-  <script src="./assets/archive.js" defer></script>`, 'notes'));
-
-function markdown(body) {
-  return body.trim().split(/\r?\n\s*\r?\n/).map(block => block.startsWith('## ')
-    ? `<h2>${escape(block.slice(3))}</h2>`
-    : `<p>${escape(block).replaceAll('\n', '<br>')}</p>`).join('\n');
-}
+  </aside>`, 'notes'));
 
 for (const [index, post] of posts.entries()) {
   const next = posts[index + 1] ?? (index > 0 ? posts[0] : null);
   const content = `
     <a class="back" href="./index.html#notes"><span aria-hidden="true">←</span> 文章索引</a>
     <div class="article-heading">
-      <div class="article-meta">${date(post)}<span>${escape(post.category)}</span><span>建站示例</span></div>
+      <div class="article-meta">${date(post)}<span>${escape(post.category)}</span></div>
       <h1>${escape(post.title)}</h1>
       <p class="dek">${escape(post.description)}</p>
     </div>
@@ -147,10 +141,12 @@ writeFileSync('dist/about.html', page('关于', `
       <p>LYNNING 是我持续推进的个人 Agent 项目。泠这个名字，最初来自我的科幻小说。我关心长期记忆、Traits，以及让 Agent 自己参与决定交互方式的 Reaction。</p>
       <p><a href="${project}">浏览 LYNNING ${arrow}</a></p>
       <h2>关于这个站</h2>
-      <p>文章索引目前收录建站示例，供作者编辑后正式发表。</p>
+      <p>这里会陆续发布技术、研究与创作笔记。</p>
       <p><a href="${github}">GitHub ${arrow}</a> · <a href="./feed.xml">RSS</a></p>
     </div>
   </section>`, 'about'));
+
+writeFileSync('dist/author.html', page('作者工作台', authorPage, 'author', 'Tecrel 博客的写作工作台。'));
 
 const items = posts.map(post => `<item>
   <title>${escape(post.title)}</title>

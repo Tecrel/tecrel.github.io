@@ -15,7 +15,9 @@ python -m http.server 4173 --directory dist
 
 ## 写文章
 
-在 posts 新建 `YYYY-MM-DD-slug.md`，按现有示例填写 title、date、category、description，接着独占一行 `---`，下面写正文。当前支持段落和二级标题 `##`；HTML 会转义，暂不支持其他 Markdown 语法。首页自动排序、分类和搜索。所有示例需要作者审阅后再正式发表。
+打开[作者工作台](https://tecrel.github.io/author.html)，填写文章资料并编辑 Markdown。工作台提供实时预览、当前浏览器草稿、导入、复制和下载。发布时复制 Markdown，前往 GitHub 创建文件，粘贴并提交到 `main`。若要修改旧文，可以直接在 GitHub 编辑，也可以导入该文章的 `.md` 文件修改，再将内容复制回同名文件。
+
+也可以在 `posts` 手动新建 `YYYY-MM-DD-slug.md`，逐行填写 `title: ...`、`date: ...`、`category: ...` 和 `description: ...`，接着独占一行 `---`，下面写正文。支持段落、标题、无序列表、粗体、行内代码、围栏代码块和 HTTP(S) 链接。第一篇文章提交后，首页会自动出现精选和文章索引。
 
 ## GitHub Pages
 
@@ -27,4 +29,4 @@ python -m http.server 4173 --directory dist
 
 首页采用纸白、墨黑与朱红配色，以衬线刊头和精选文章开场。正文使用单栏排版。视觉参考包括 [The Paper Portfolio](https://www.niccolomiranda.com/) 的刊头与网格，以及 [Cine City](https://www.cinecity.nyc/) 的封面和章节导览。射电望远镜封面由 ImageGen 生成，WebP 文件保存在 assets 中。
 
-站点不依赖外部字体或图片服务，支持移动端、键盘导航与减少动态偏好。文章为建站示例。
+站点不依赖外部字体或图片服务，支持移动端、键盘导航与减少动态偏好。
