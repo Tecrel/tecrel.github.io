@@ -235,6 +235,13 @@ button { cursor: pointer; }
 .prose pre { padding: 16px; overflow-x: auto; background: #e9e1d6; font-size: .85em; }
 .prose code { overflow-wrap: anywhere; }
 .prose pre code { overflow-wrap: normal; }
+.prose hr { border: 0; border-top: 1px solid var(--rule); margin: 2em 0; }
+.prose blockquote { margin: 1.5em 0; padding-left: 1em; border-left: 3px solid var(--rule); color: var(--muted); }
+.prose img { max-width: 100%; height: auto; }
+.prose table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+.prose th, .prose td { padding: 6px 12px; border: 1px solid var(--rule); }
+.prose .contains-task-list { list-style: none; padding-left: 1.4em; }
+.prose .task-list-item-checkbox { margin: 0 .4em 0 0; vertical-align: middle; }
 .article-heading + .prose { padding-top: 26px; border-top: 1px solid var(--rule); }
 .next { margin-top: 56px; margin-bottom: 70px; border-top: 1px solid var(--ink); padding-top: 18px; }
 .next span { color: var(--muted); font-size: 14px; }

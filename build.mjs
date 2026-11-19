@@ -29,6 +29,14 @@ for (const file of ['archive.js', 'cover.webp', 'style.css']) copyFileSync('asse
 if (auth) {
   for (const file of authFiles) copyFileSync('auth/' + file, 'dist/assets/' + file);
   const publicConfig = Object.fromEntries(['apiKey', 'authDomain', 'projectId', 'appId'].map(key => [key, auth.firebase[key]]));
+  if (process.env.BLOG_PUBLISH_TRIGGER_URL) {
+    const trigger = new URL(process.env.BLOG_PUBLISH_TRIGGER_URL);
+    if (trigger.href !== trigger.origin + '/' || trigger.protocol !== 'https:' || trigger.port ||
+        !/^[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev$/.test(trigger.hostname)) {
+      throw new Error('BLOG_PUBLISH_TRIGGER_URL must be the dedicated HTTPS Worker origin.');
+    }
+    publicConfig.publishTrigger = trigger.origin;
+  }
   writeFileSync('dist/assets/auth-config.js', `export const config = ${JSON.stringify(publicConfig)};\nexport const providers = ${JSON.stringify(auth.providers)};\n`);
 }
 

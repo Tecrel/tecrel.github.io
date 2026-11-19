@@ -1,1 +1,1 @@
-{"name":"tecrel-notes","private":true,"type":"module","scripts":{"build":"node build.mjs","preview":"python -m http.server 4173 --directory dist"}}
+{"name":"tecrel-notes","private":true,"type":"module","scripts":{"build":"node build.mjs","preview":"python -m http.server 4173 --directory dist"},"dependencies":{"markdown-it":"15.0.3","markdown-it-footnote":"4.0.0","markdown-it-task-lists":"2.1.1"}}

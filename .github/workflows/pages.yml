@@ -22,9 +22,11 @@ jobs:
         with:
           node-version: '22'
       - uses: actions/configure-pages@v5
+      - run: npm ci --ignore-scripts
       - run: node build.mjs
         env:
           BLOG_AUTH_SITE_CONFIG: ${{ vars.BLOG_AUTH_SITE_CONFIG }}
+          BLOG_PUBLISH_TRIGGER_URL: ${{ vars.BLOG_PUBLISH_TRIGGER_URL }}
       - uses: actions/upload-pages-artifact@v4
         with:
           path: dist

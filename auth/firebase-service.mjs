@@ -3,12 +3,13 @@ import { publicationDraft } from './publish-input.mjs';
 const sdk = 'https://www.gstatic.com/firebasejs/13.4.0/';
 
 export async function connect(config) {
+  const { publishTrigger, ...firebaseConfig } = config;
   const [appModule, authModule, dbModule] = await Promise.all([
     import(sdk + 'firebase-app.js'),
     import(sdk + 'firebase-auth.js'),
     import(sdk + 'firebase-firestore.js'),
   ]);
-  const app = appModule.initializeApp(config);
+  const app = appModule.initializeApp(firebaseConfig);
   const auth = authModule.getAuth(app);
   const database = dbModule.getFirestore(app);
   const workspace = dbModule.doc(database, 'private', 'author-workspace');
@@ -46,7 +47,18 @@ export async function connect(config) {
         const existing = await dbModule.getDocFromServer(document);
         if (!existing.exists() || existing.data().ownerUid !== user.uid) throw error;
       }
-      return { id };
+      let started = false;
+      if (publishTrigger) {
+        try {
+          const token = await user.getIdToken();
+          const response = await fetch(publishTrigger + '/publish/' + id, {
+            method: 'POST', headers: { Authorization: 'Bearer ' + token },
+            redirect: 'error', signal: AbortSignal.timeout(5000),
+          });
+          started = response.status === 202;
+        } catch { /* The queued submission is already saved for the scheduled worker. */ }
+      }
+      return { id, started };
     },
     async publicationStatus(id) {
       if (!/^[a-f0-9]{64}$/.test(id)) throw new Error('任务编号无效。');

@@ -1,6 +1,6 @@
 import { appendFileSync } from 'node:fs';
 import { publicationDraft } from './publish-input.mjs';
-import { readPost } from '../assets/markdown.js';
+import { readPost } from '../assets/post-format.js';
 
 const firestore = 'https://firestore.googleapis.com/v1/projects/tecrel-blog/databases/(default)/documents';
 const repo = 'https://api.github.com/repos/Tecrel/tecrel.github.io';

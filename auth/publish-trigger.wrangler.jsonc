@@ -1,0 +1,10 @@
+{
+  "name": "tecrel-blog-publish",
+  "main": "publish-trigger-worker.mjs",
+  "compatibility_date": "2026-11-19",
+  "workers_dev": true,
+  "preview_urls": false,
+  "secrets": {
+    "required": ["GITHUB_APP_PRIVATE_KEY", "GITHUB_APP_ID", "GITHUB_INSTALLATION_ID"]
+  }
+}
