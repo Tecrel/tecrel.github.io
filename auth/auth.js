@@ -7,6 +7,7 @@ const logout = document.querySelector('#logout');
 const toggle = document.querySelector('#view-toggle');
 const dialog = document.querySelector('#login-dialog');
 const feedback = document.querySelector('#login-feedback');
+const reload = document.querySelector('#login-reload');
 const accountFeedback = document.querySelector('#account-feedback');
 const panel = document.querySelector('#author-panel');
 const main = document.querySelector('#main');
@@ -17,6 +18,7 @@ let confirmation;
 let frame;
 let frameObserver;
 let sessionRevision = 0;
+let oauthRevision = 0;
 let readerPreview = new URLSearchParams(location.search).get('view') === 'reader';
 
 function showReader() {
@@ -41,6 +43,7 @@ function loginError(error) {
   const messages = {
     'auth/popup-blocked': '浏览器拦截了登录窗口，请允许弹窗后重试。',
     'auth/popup-closed-by-user': '登录窗口已关闭，可以重新登录。',
+    'auth/network-request-failed': '没有连接到登录服务。请检查网络后重试。',
     'auth/account-exists-with-different-credential': '此邮箱已通过另一种方式注册，请使用原来的登录方式。',
     'auth/too-many-requests': '请求过多，请稍后再试。',
     'auth/invalid-verification-code': '验证码有误，请重试。',
@@ -48,11 +51,9 @@ function loginError(error) {
   feedback.textContent = messages[error?.code] || '登录未完成，请确认网络连接后重试。';
 }
 
-open.addEventListener('click', () => {
-  feedback.textContent = '';
-  dialog.showModal();
-});
+open.addEventListener('click', () => dialog.showModal());
 close.addEventListener('click', () => dialog.close());
+reload.addEventListener('click', () => location.reload());
 toggle.addEventListener('click', () => {
   readerPreview = !panel.hidden;
   if (readerPreview) showReader();
@@ -66,16 +67,41 @@ for (const button of oauthButtons) {
 document.querySelector('#phone-login').hidden = !providers.includes('phone');
 for (const button of dialog.querySelectorAll('button[type="submit"]')) button.disabled = true;
 
+function setOAuthBusy(busy) {
+  for (const button of oauthButtons) button.disabled = busy;
+}
+
+const startupTimer = setTimeout(() => {
+  feedback.textContent = '登录服务连接超时。检查网络后可以重新载入博客。';
+  reload.hidden = false;
+}, 15_000);
+
 try {
   const service = await connect(config);
+  clearTimeout(startupTimer);
+  reload.hidden = true;
+  feedback.textContent = '';
   for (const button of dialog.querySelectorAll('button:not(#login-close)')) button.disabled = false;
   for (const button of oauthButtons) {
     button.addEventListener('click', async () => {
-      button.disabled = true;
-      feedback.textContent = '等待登录窗口确认…';
+      const attempt = ++oauthRevision;
+      setOAuthBusy(true);
+      const hint = button.dataset.provider === 'github'
+        ? '请切到 GitHub 授权窗口。若授权按钮是灰色，先把窗口切到前台，再放大窗口或滚动到按钮。'
+        : '请检查浏览器打开的 Google 登录窗口。';
+      feedback.textContent = hint;
+      const retryTimer = setTimeout(() => {
+        if (attempt !== oauthRevision) return;
+        setOAuthBusy(false);
+        feedback.textContent = hint + ' 如果没有看到窗口，可以点上方按钮重试。';
+      }, 30_000);
       try { await service.signin(button.dataset.provider); }
-      catch (error) { loginError(error); }
-      finally { button.disabled = false; }
+      catch (error) {
+        if (attempt === oauthRevision) loginError(error);
+      } finally {
+        clearTimeout(retryTimer);
+        if (attempt === oauthRevision) setOAuthBusy(false);
+      }
     });
   }
   phone.addEventListener('submit', async event => {
@@ -113,6 +139,7 @@ try {
     open.hidden = Boolean(user);
     logout.hidden = !user;
     if (!user) return;
+    feedback.textContent = '';
     dialog.close();
     confirmation = null;
     phone.reset();
@@ -142,5 +169,7 @@ try {
     }
   });
 } catch {
-  notice('登录服务暂时不可用。你仍可以浏览博客。');
+  clearTimeout(startupTimer);
+  feedback.textContent = '登录服务暂时不可用。检查网络后可以重新载入博客。';
+  reload.hidden = false;
 }

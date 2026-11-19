@@ -26,7 +26,8 @@ export const authDialog = `
         </form>
       </details>
     </div>
-    <p id="login-feedback" role="status" aria-live="polite"></p>
+    <p id="login-feedback" role="status" aria-live="polite">正在连接登录服务…</p>
+    <button class="read-link" id="login-reload" type="button" hidden>重新载入博客</button>
   </dialog>
   <section id="author-panel" aria-label="作者工作台" hidden></section>
   <script type="module" src="./assets/auth.js"></script>`;
