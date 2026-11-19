@@ -9,7 +9,7 @@ for (const file of readdirSync('dist', { withFileTypes: true })) {
   if (file.isFile() && file.name.endsWith('.html')) unlinkSync('dist/' + file.name);
 }
 mkdirSync('dist/assets', { recursive: true });
-const readerAssets = new Set(['archive.js', 'cover.webp', 'style.css']);
+const readerAssets = new Set(['archive.js', 'cover.webp', 'style.css', 'posts-index.json']);
 const auth = process.env.BLOG_AUTH_SITE_CONFIG ? JSON.parse(process.env.BLOG_AUTH_SITE_CONFIG) : null;
 const authFiles = ['auth.js', 'auth.css', 'firebase-service.mjs', 'publish-input.mjs'];
 if (auth) {
@@ -42,6 +42,10 @@ const posts = readdirSync('posts').filter(file => file.endsWith('.md')).map(file
   }
   return { ...readPost(readFileSync('posts/' + file, 'utf8')), slug: file.slice(0, -3) };
 }).sort((a, b) => b.date.localeCompare(a.date));
+
+writeFileSync('dist/assets/posts-index.json', JSON.stringify(posts.map(({ slug, title, date, category }) => ({
+  filename: slug + '.md', title, date, category,
+}))));
 
 const date = post => `<time datetime="${escape(post.date)}">${escape(post.date.replaceAll('-', '.'))}</time>`;
 const postUrl = post => `./${encodeURIComponent(post.slug)}.html`;

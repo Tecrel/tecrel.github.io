@@ -19,7 +19,41 @@ let frame;
 let frameObserver;
 let sessionRevision = 0;
 let oauthRevision = 0;
-let readerPreview = new URLSearchParams(location.search).get('view') === 'reader';
+const previewKey = 'tecrel-blog:reader-preview';
+
+function readPreview() {
+  if (new URLSearchParams(location.search).get('view') === 'reader') return true;
+  try { return sessionStorage.getItem(previewKey) === '1'; }
+  catch { return false; }
+}
+
+let readerPreview = readPreview();
+
+function rememberPreview() {
+  try {
+    if (readerPreview) sessionStorage.setItem(previewKey, '1');
+    else sessionStorage.removeItem(previewKey);
+  } catch { /* The current page can still switch views. */ }
+}
+
+function setPreview(enabled) {
+  readerPreview = enabled;
+  rememberPreview();
+  if (!enabled) {
+    const url = new URL(location.href);
+    if (url.searchParams.get('view') === 'reader') {
+      url.searchParams.delete('view');
+      history.replaceState(history.state, '', url);
+    }
+  }
+  if (readerPreview) showReader();
+  else showAuthor();
+}
+
+rememberPreview();
+window.addEventListener('pageshow', event => {
+  if (event.persisted) setPreview(readPreview());
+});
 
 function showReader() {
   panel.hidden = true;
@@ -54,11 +88,7 @@ function loginError(error) {
 open.addEventListener('click', () => dialog.showModal());
 close.addEventListener('click', () => dialog.close());
 reload.addEventListener('click', () => location.reload());
-toggle.addEventListener('click', () => {
-  readerPreview = !panel.hidden;
-  if (readerPreview) showReader();
-  else showAuthor();
-});
+toggle.addEventListener('click', () => setPreview(!readerPreview));
 
 for (const button of oauthButtons) {
   button.hidden = !providers.includes(button.dataset.provider);
@@ -140,7 +170,10 @@ try {
     finally { event.submitter.disabled = false; }
   });
   logout.addEventListener('click', async () => {
-    try { await service.signout(); }
+    try {
+      await service.signout();
+      setPreview(false);
+    }
     catch { notice('退出未完成，请重试。'); }
   });
   service.observe(async user => {
