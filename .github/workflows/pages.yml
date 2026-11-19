@@ -23,6 +23,8 @@ jobs:
           node-version: '22'
       - uses: actions/configure-pages@v5
       - run: node build.mjs
+        env:
+          BLOG_AUTH_SITE_CONFIG: ${{ vars.BLOG_AUTH_SITE_CONFIG }}
       - uses: actions/upload-pages-artifact@v4
         with:
           path: dist

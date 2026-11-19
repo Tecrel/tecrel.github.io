@@ -1,0 +1,39 @@
+.account-button {
+  min-height: 44px;
+  padding: 5px 12px;
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  background: transparent;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.account-button:hover { background: var(--ink); color: var(--paper); }
+.topbar nav { gap: clamp(8px, 2vw, 28px); flex-wrap: wrap; justify-content: end; }
+.account-feedback { color: var(--accent); }
+#login-dialog {
+  width: min(420px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  padding: 25px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+}
+#login-dialog::backdrop { background: rgb(29 27 25 / .50); }
+.dialog-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.dialog-heading h2 { margin: 0; font: 700 27px/1.3 var(--serif); }
+.login-options { display: grid; gap: 10px; margin: 20px 0 12px; }
+.login-options button { background: transparent; }
+.login-options button:not(:disabled):hover { background: var(--ink); color: var(--paper); }
+.login-options button:disabled { cursor: wait; opacity: .55; }
+#phone-login summary { padding: 8px 0; min-height: 44px; cursor: pointer; }
+#phone-login form { display: grid; gap: 8px; margin-bottom: 10px; }
+#phone-login label { display: grid; gap: 4px; font-size: 14px; }
+#phone-login input { padding: 7px; min-height: 44px; width: 100%; background: #fbf9f4; border: 1px solid var(--rule); }
+#login-feedback { min-height: 22px; margin: 0; color: var(--muted); font-size: 14px; }
+#author-panel iframe { width: 100%; height: 777px; display: block; border: 0; }
+@media (max-width: 580px) {
+  .topbar { align-items: start; padding-block: 8px; }
+  .topbar nav { gap: 1px 9px; }
+  .topbar nav a, .account-button { font-size: 13px; }
+  .account-button { padding-inline: 7px; }
+}

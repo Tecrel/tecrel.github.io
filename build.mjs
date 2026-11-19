@@ -1,6 +1,7 @@
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { escape, markdown, readPost } from './assets/markdown.js';
+import { authMenu, authDialog } from './auth/auth-ui.mjs';
 
 process.chdir(fileURLToPath(new URL('.', import.meta.url)));
 mkdirSync('dist', { recursive: true });
@@ -9,10 +10,27 @@ for (const file of readdirSync('dist', { withFileTypes: true })) {
 }
 mkdirSync('dist/assets', { recursive: true });
 const readerAssets = new Set(['archive.js', 'cover.webp', 'style.css']);
+const auth = process.env.BLOG_AUTH_SITE_CONFIG ? JSON.parse(process.env.BLOG_AUTH_SITE_CONFIG) : null;
+const authFiles = ['auth.js', 'auth.css', 'firebase-service.mjs'];
+if (auth) {
+  const { firebase, providers } = auth;
+  if (!firebase || !['apiKey', 'authDomain', 'projectId', 'appId'].every(key => typeof firebase[key] === 'string' && firebase[key]) ||
+      firebase.authDomain !== firebase.projectId + '.firebaseapp.com' ||
+      !Array.isArray(providers) || !providers.includes('github') ||
+      !providers.every(provider => ['github', 'google', 'phone'].includes(provider))) {
+    throw new Error('Invalid BLOG_AUTH_SITE_CONFIG. See the authentication setup guide.');
+  }
+  for (const asset of [...authFiles, 'auth-config.js']) readerAssets.add(asset);
+}
 for (const file of readdirSync('dist/assets', { withFileTypes: true })) {
   if (file.isFile() && !readerAssets.has(file.name)) unlinkSync('dist/assets/' + file.name);
 }
-for (const file of readerAssets) copyFileSync('assets/' + file, 'dist/assets/' + file);
+for (const file of ['archive.js', 'cover.webp', 'style.css']) copyFileSync('assets/' + file, 'dist/assets/' + file);
+if (auth) {
+  for (const file of authFiles) copyFileSync('auth/' + file, 'dist/assets/' + file);
+  const publicConfig = Object.fromEntries(['apiKey', 'authDomain', 'projectId', 'appId'].map(key => [key, auth.firebase[key]]));
+  writeFileSync('dist/assets/auth-config.js', `export const config = ${JSON.stringify(publicConfig)};\nexport const providers = ${JSON.stringify(auth.providers)};\n`);
+}
 
 const github = 'https://github.com/Tecrel';
 const project = github + '/Personal_Agent_Lynn';
@@ -37,6 +55,7 @@ const header = active => `
       <a href="./index.html${posts.length ? '#notes' : ''}" ${active === 'notes' ? 'aria-current="page"' : ''}>${posts.length ? '文章' : '首页'}</a>
       <a href="./about.html" ${active === 'about' ? 'aria-current="page"' : ''}>关于</a>
       <a href="${github}">GitHub ${arrow}</a>
+      ${auth ? authMenu : ''}
     </nav>
   </header>`;
 
@@ -55,12 +74,14 @@ function page(title, content, active, description = 'Tecrel 的技术、研究�
   <meta name="description" content="${escape(description)}">
   <title>${escape(title)} · Tecrel</title>
   <link rel="stylesheet" href="./assets/style.css">
+  ${auth ? '<link rel="stylesheet" href="./assets/auth.css">' : ''}
   <link rel="alternate" type="application/rss+xml" title="Tecrel 的博客" href="./feed.xml">
 </head>
 <body>
   <div class="shell">
     ${header(active)}
     <main id="main">${content}</main>
+    ${auth ? authDialog : ''}
     ${footer}
   </div>
 </body>
