@@ -78,6 +78,21 @@ const startupTimer = setTimeout(() => {
 
 try {
   const service = await connect(config);
+  let authorUser = null;
+  window.addEventListener('message', async event => {
+    if (event.origin !== location.origin || !frame || event.source !== frame.contentWindow || !authorUser) return;
+    const { type, requestId, data } = event.data ?? {};
+    if (!['blog-submit', 'blog-status'].includes(type) || !/^[a-f0-9-]{36}$/.test(requestId)) return;
+    const authorFrame = frame;
+    try {
+      const result = type === 'blog-submit'
+        ? await service.submitPublication(authorUser, data)
+        : await service.publicationStatus(data?.id);
+      if (frame === authorFrame) event.source.postMessage({ type: 'blog-reply', requestId, result }, location.origin);
+    } catch {
+      if (frame === authorFrame) event.source.postMessage({ type: 'blog-reply', requestId, failed: true }, location.origin);
+    }
+  });
   clearTimeout(startupTimer);
   reload.hidden = true;
   feedback.textContent = '';
@@ -133,6 +148,7 @@ try {
     frameObserver?.disconnect();
     panel.replaceChildren();
     frame = null;
+    authorUser = null;
     showReader();
     notice('');
     toggle.hidden = true;
@@ -148,6 +164,7 @@ try {
     try {
       const html = await service.workspace(user);
       if (revision !== sessionRevision || !html) return;
+      authorUser = user;
       frame = document.createElement('iframe');
       frame.title = '作者工作台';
       frame.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-downloads allow-modals allow-popups allow-popups-to-escape-sandbox');

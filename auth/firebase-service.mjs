@@ -1,3 +1,5 @@
+import { publicationDraft } from './publish-input.mjs';
+
 const sdk = 'https://www.gstatic.com/firebasejs/13.4.0/';
 
 export async function connect(config) {
@@ -28,6 +30,31 @@ export async function connect(config) {
       }
     },
     signout: () => authModule.signOut(auth),
+    async submitPublication(user, draft) {
+      const publication = publicationDraft(draft);
+      const payload = new TextEncoder().encode(JSON.stringify([user.uid, publication]));
+      const digest = await crypto.subtle.digest('SHA-256', payload);
+      const id = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+      const document = dbModule.doc(database, 'publish-queue', id);
+      try {
+        await dbModule.setDoc(document, {
+          ...publication, ownerUid: user.uid, status: 'pending', submittedAt: dbModule.serverTimestamp(),
+        });
+      } catch (error) {
+        // An existing queued draft is immutable. Retry by reading that job.
+        if (error.code !== 'permission-denied') throw error;
+        const existing = await dbModule.getDocFromServer(document);
+        if (!existing.exists() || existing.data().ownerUid !== user.uid) throw error;
+      }
+      return { id };
+    },
+    async publicationStatus(id) {
+      if (!/^[a-f0-9]{64}$/.test(id)) throw new Error('任务编号无效。');
+      const snapshot = await dbModule.getDocFromServer(dbModule.doc(database, 'publish-queue', id));
+      if (!snapshot.exists()) throw new Error('找不到该提交任务。');
+      const { status, commit, blobSha, reason } = snapshot.data();
+      return { status, commit, blobSha, reason };
+    },
     async workspace(user) {
       const { claims } = await user.getIdTokenResult();
       if (claims.firebase?.sign_in_provider !== 'github.com' ||

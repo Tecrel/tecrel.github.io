@@ -11,7 +11,7 @@ for (const file of readdirSync('dist', { withFileTypes: true })) {
 mkdirSync('dist/assets', { recursive: true });
 const readerAssets = new Set(['archive.js', 'cover.webp', 'style.css']);
 const auth = process.env.BLOG_AUTH_SITE_CONFIG ? JSON.parse(process.env.BLOG_AUTH_SITE_CONFIG) : null;
-const authFiles = ['auth.js', 'auth.css', 'firebase-service.mjs'];
+const authFiles = ['auth.js', 'auth.css', 'firebase-service.mjs', 'publish-input.mjs'];
 if (auth) {
   const { firebase, providers } = auth;
   if (!firebase || !['apiKey', 'authDomain', 'projectId', 'appId'].every(key => typeof firebase[key] === 'string' && firebase[key]) ||

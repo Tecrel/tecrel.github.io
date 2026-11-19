@@ -1,0 +1,62 @@
+name: Publish queued articles
+on:
+  schedule:
+    - cron: '2-57/5 * * * *'
+  workflow_dispatch:
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: vars.BLOG_PUBLISH_PROVIDER != '' && vars.BLOG_PUBLISH_ACCOUNT != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - id: google
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.BLOG_PUBLISH_PROVIDER }}
+          service_account: ${{ vars.BLOG_PUBLISH_ACCOUNT }}
+          create_credentials_file: false
+          token_format: access_token
+      - id: queue
+        run: node auth/process-publish-queue.mjs
+        env:
+          FIRESTORE_ACCESS_TOKEN: ${{ steps.google.outputs.access_token }}
+          BLOG_GITHUB_TOKEN: ${{ github.token }}
+      - uses: actions/checkout@v4
+        if: steps.queue.outputs.deploy == 'true'
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/configure-pages@v5
+        if: steps.queue.outputs.deploy == 'true'
+      - run: node build.mjs
+        if: steps.queue.outputs.deploy == 'true'
+        env:
+          BLOG_AUTH_SITE_CONFIG: ${{ vars.BLOG_AUTH_SITE_CONFIG }}
+      - uses: actions/upload-pages-artifact@v4
+        if: steps.queue.outputs.deploy == 'true'
+        with:
+          path: dist
+      - uses: actions/deploy-pages@v4
+        id: deployment
+        if: steps.queue.outputs.deploy == 'true'
+      - run: node auth/process-publish-queue.mjs finish
+        if: steps.deployment.outcome == 'success'
+        env:
+          FIRESTORE_ACCESS_TOKEN: ${{ steps.google.outputs.access_token }}
+          BLOG_DEPLOYED_IDS: ${{ steps.queue.outputs.job_ids }}
