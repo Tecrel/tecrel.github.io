@@ -1,0 +1,174 @@
+import { cpSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+process.chdir(fileURLToPath(new URL('.', import.meta.url)));
+mkdirSync('dist', { recursive: true });
+cpSync('assets', 'dist/assets', { recursive: true });
+
+const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+const github = 'https://github.com/Tecrel';
+const project = github + '/Personal_Agent_Lynn';
+const base = 'https://tecrel.github.io';
+
+const posts = readdirSync('posts').filter(file => file.endsWith('.md')).map(file => {
+  const [header, ...parts] = readFileSync('posts/' + file, 'utf8').split(/\r?\n---\r?\n/);
+  const metadata = Object.fromEntries(header.split(/\r?\n/).filter(Boolean).map(line => {
+    const colon = line.indexOf(':');
+    if (colon < 1) throw new Error('Invalid metadata in ' + file);
+    return [line.slice(0, colon), line.slice(colon + 1).trim()];
+  }));
+  for (const key of ['title', 'date', 'category', 'description']) {
+    if (!metadata[key]) throw new Error('Missing ' + key + ' in ' + file);
+  }
+  return { ...metadata, slug: file.slice(0, -3), body: parts.join('\n---\n') };
+}).sort((a, b) => b.date.localeCompare(a.date));
+
+const date = post => `<time datetime="${escape(post.date)}">${escape(post.date.replaceAll('-', '.'))}</time>`;
+const postUrl = post => `./${encodeURIComponent(post.slug)}.html`;
+const cover = `<img class="cover" src="./assets/cover.webp" alt="荒原上独立的射电望远镜，远处是低矮的山脉" width="1536" height="1024">`;
+const arrow = '<span aria-hidden="true">↗</span>';
+const header = active => `
+  <a class="skip" href="#main">跳至内容</a>
+  <header class="topbar">
+    <a class="site-name" href="./index.html"><span class="mark" aria-hidden="true">T</span> Tecrel 的博客</a>
+    <nav aria-label="主导航">
+      <a href="./index.html#notes" ${active === 'notes' ? 'aria-current="page"' : ''}>文章</a>
+      <a href="./about.html" ${active === 'about' ? 'aria-current="page"' : ''}>关于</a>
+      <a href="${github}">GitHub ${arrow}</a>
+    </nav>
+  </header>`;
+
+const footer = `
+  <footer class="footer">
+    <span>© 2026 Tecrel</span>
+    <a href="./feed.xml">RSS 订阅</a>
+  </footer>`;
+
+function page(title, content, active, description = 'Tecrel 的技术、研究与科幻创作笔记。') {
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="${escape(description)}">
+  <title>${escape(title)} · Tecrel</title>
+  <link rel="stylesheet" href="./assets/style.css">
+  <link rel="alternate" type="application/rss+xml" title="Tecrel 的博客" href="./feed.xml">
+</head>
+<body>
+  <div class="shell">
+    ${header(active)}
+    <main id="main">${content}</main>
+    ${footer}
+  </div>
+</body>
+</html>`;
+}
+
+const featured = posts.find(post => post.slug === '2026-11-18-reaction') ?? posts[0];
+const categories = [...new Set(posts.map(post => post.category))];
+const rows = posts.map(post => `
+  <article class="post" data-category="${escape(post.category)}" data-search="${escape([post.title, post.description, post.category].join(' '))}">
+    ${date(post)}
+    <div>
+      <h3><a href="${postUrl(post)}">${escape(post.title)}</a></h3>
+      <p>${escape(post.description)}</p>
+    </div>
+    <span class="category">${escape(post.category)}</span>
+  </article>`).join('');
+
+writeFileSync('dist/index.html', page('个人博客', `
+  <section class="masthead" aria-labelledby="masthead">
+    <h1 id="masthead">Tecrel<span>.</span></h1>
+    <p>技术笔记、Agent 研究<br>和科幻创作。</p>
+  </section>
+  ${featured ? `<section class="feature" aria-labelledby="feature-title">
+    <a class="feature-cover" href="${postUrl(featured)}" aria-label="阅读《${escape(featured.title)}》">${cover}</a>
+    <div class="feature-copy">
+      <div class="feature-meta"><span>精选文章</span>${date(featured)}</div>
+      <div>
+        <h2 id="feature-title"><a href="${postUrl(featured)}">${escape(featured.title)}</a></h2>
+        <p>${escape(featured.description)}</p>
+      </div>
+      <a class="read-link" href="${postUrl(featured)}">阅读全文 ${arrow}</a>
+    </div>
+  </section>` : ''}
+  <section class="journal" id="notes" aria-labelledby="journal-title">
+    <div class="section-head">
+      <h2 id="journal-title">文章索引</h2>
+      <span>建站示例 · ${posts.length} 篇</span>
+    </div>
+    <div class="archive-tools" hidden>
+      <div class="filters" role="group" aria-label="按分类筛选">
+        <button type="button" aria-pressed="true">全部</button>
+        ${categories.map(category => `<button type="button" data-filter="${escape(category)}" aria-pressed="false">${escape(category)}</button>`).join('')}
+      </div>
+      <label class="search"><span>搜索</span><input type="search" placeholder="标题或关键词" autocomplete="off"></label>
+    </div>
+    <div>${rows}</div>
+    <p id="empty" hidden>没有找到符合条件的文章。</p>
+    <p class="sr-only" id="count" aria-live="polite"></p>
+  </section>
+  <aside class="project">
+    <div><h2>正在做 · LYNNING</h2><p>关于记忆、主动性与交互形式的个人 Agent 项目。</p></div>
+    <a href="${project}">项目仓库 ${arrow}</a>
+  </aside>
+  <script src="./assets/archive.js" defer></script>`, 'notes'));
+
+function markdown(body) {
+  return body.trim().split(/\r?\n\s*\r?\n/).map(block => block.startsWith('## ')
+    ? `<h2>${escape(block.slice(3))}</h2>`
+    : `<p>${escape(block).replaceAll('\n', '<br>')}</p>`).join('\n');
+}
+
+for (const [index, post] of posts.entries()) {
+  const next = posts[index + 1] ?? (index > 0 ? posts[0] : null);
+  const content = `
+    <a class="back" href="./index.html#notes"><span aria-hidden="true">←</span> 文章索引</a>
+    <div class="article-heading">
+      <div class="article-meta">${date(post)}<span>${escape(post.category)}</span><span>建站示例</span></div>
+      <h1>${escape(post.title)}</h1>
+      <p class="dek">${escape(post.description)}</p>
+    </div>
+    ${post === featured ? `<figure class="article-cover">${cover}</figure>` : ''}
+    <article class="prose">${markdown(post.body)}</article>
+    ${next ? `<div class="next"><span>继续阅读</span><a href="${postUrl(next)}">${escape(next.title)} ${arrow}</a></div>` : ''}`;
+  writeFileSync(`dist/${post.slug}.html`, page(post.title, content, 'notes', post.description));
+}
+
+writeFileSync('dist/about.html', page('关于', `
+  <section class="about">
+    <div class="about-title"><h1>关于<br><span>Tecrel.</span></h1></div>
+    <div class="prose">
+      <p class="dek">我是一名本科生，也写科幻小说。</p>
+      <p>这里记录技术探索、研究笔记，以及还在形成中的想法。</p>
+      <h2>正在构建</h2>
+      <p>LYNNING 是我持续推进的个人 Agent 项目。泠这个名字，最初来自我的科幻小说。我关心长期记忆、Traits，以及让 Agent 自己参与决定交互方式的 Reaction。</p>
+      <p><a href="${project}">浏览 LYNNING ${arrow}</a></p>
+      <h2>关于这个站</h2>
+      <p>文章索引目前收录建站示例，供作者编辑后正式发表。</p>
+      <p><a href="${github}">GitHub ${arrow}</a> · <a href="./feed.xml">RSS</a></p>
+    </div>
+  </section>`, 'about'));
+
+const items = posts.map(post => `<item>
+  <title>${escape(post.title)}</title>
+  <link>${base}/${encodeURIComponent(post.slug)}.html</link>
+  <guid>${base}/${encodeURIComponent(post.slug)}.html</guid>
+  <description>${escape(post.description)}</description>
+</item>`).join('\n');
+writeFileSync('dist/feed.xml', `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+  <title>Tecrel 的博客</title><link>${base}/</link>
+  <description>技术笔记、Agent 研究和科幻创作。</description>
+  ${items}
+</channel></rss>`);
+
+writeFileSync('dist/404.html', page('页面未找到', `
+  <section class="missing">
+    <h1>页面未找到</h1>
+    <a class="read-link" href="${base}/">回到首页 ${arrow}</a>
+  </section>`));
+writeFileSync('dist/.nojekyll', '');
+console.log(`Built ${posts.length} posts, home, about, 404 and RSS.`);
