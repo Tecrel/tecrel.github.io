@@ -53,7 +53,7 @@ export async function connect(config) {
           const token = await user.getIdToken();
           const response = await fetch(publishTrigger + '/publish/' + id, {
             method: 'POST', headers: { Authorization: 'Bearer ' + token },
-            redirect: 'error', signal: AbortSignal.timeout(5000),
+            redirect: 'error', signal: AbortSignal.timeout(25_000),
           });
           started = response.status === 202;
         } catch { /* The queued submission is already saved for the scheduled worker. */ }
